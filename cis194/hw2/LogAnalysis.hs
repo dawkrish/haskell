@@ -2,14 +2,19 @@ module LogAnalysis where
 
 import Log
 
+
+parse :: String -> [LogMessage]
+parse file = [parseMessage line| line <- lines file]
+
 parseMessage :: String -> LogMessage
-parseMessage "" = Unknown ""
-parseMessage ('I':' ':([ts]:' ':msg)) = LogMessage Info convertStringToNumber ts) msg
+parseMessage s
+  | firstWord == "I" = LogMessage Info (intAt 1) (dropNwords 2)
+  | firstWord == "W" = LogMessage Warning (intAt 1) (dropNwords 2)
+  | firstWord == "E" = LogMessage (Error (intAt 1)) (intAt 2) (dropNwords 3)
+  | otherwise = Unknown s
+  where
+  splitWords = words s
+  firstWord = head splitWords
+  intAt x = read (splitWords !! x) :: Int
+  dropNwords n = unwords (drop n splitWords)
 
-convertStringToNumber :: String -> Int
-convertStringToNumber s = 10
-
-getMessageType :: Char -> MessageType
-getMessageType 'I' = Info
-getMessageType 'W' = Warning
-getMessageType 'E' = Error 0
