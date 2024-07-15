@@ -11,4 +11,3 @@ perm s
 
 dropOnce :: String -> [String]
 dropOnce xs = [take i xs ++ drop (i+1) xs | i <- [0..length xs - 1]]
-
