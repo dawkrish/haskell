@@ -4,7 +4,7 @@ data Val
   = Line String
   | Number Int
   | Constant
-  | Object
+  | JSON
   | Array
   deriving (Show)
 
