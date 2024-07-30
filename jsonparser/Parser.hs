@@ -5,49 +5,70 @@ f = "{\n\t\"name\" : \"krish agarwal\",\n\t\"arr\" : [10,20,30]\n}"
 
 m = trim f
 
--- (valid . trim) file
-parse :: String -> Maybe JSON
-parse file = Nothing
+wrapper :: String -> JSON
+wrapper file = parse (trim file) 0
+
+-- its half-validated.
+parse :: String -> Int -> JSON
+parse (s : ss) idx
+  | isLeftCurly s = parseObject ss (idx + 1)
+
+parseObject :: String -> Int -> JSON
+parseObject ss idx
+  | (ss !! idx) == '\"' = [Pair (k, v)]
   where
-    ps = []
+    (k, i1) = parseKey ss "" (idx + 1)
+    (v, i2) = parseVal ss "" (i1 + 1)
+
+parseKey :: String -> String -> Int -> (Key, Int)
+parseKey ss acc idx
+  | idx+1 > length ss- 1 = error "expected ':'"
+  | currentLetter == '\"' && not (isColon (ss !! (idx+1))) = error "expected ':'"
+  | currentLetter == '\"' = (Key acc, idx + 1)
+  | otherwise = parseKey ss (acc ++ [currentLetter]) (idx + 1)
+  where
+    currentLetter = ss !! idx
+
+parseVal :: String -> String -> Int -> (Val, Int)
+parseVal ss acc idx
+  | isQuote (ss!!idx) = (Line (parseLine ss "" (idx+1)) , 0)
+
+parseLine :: String -> String -> Int -> String
+parseLine ss acc idx
+  | currentLetter == '\"' = acc
+  | otherwise = parseLine ss (acc++[currentLetter]) (idx+1)
+    where currentLetter = ss!!idx
 
 valid :: String -> Bool
-valid file = validateBrackets file && validateIllegal file 0
+valid file = validateBrackets file "" "" && validateQuote file && validateIllegal file 0
 
 validateIllegal :: String -> Int -> Bool
 validateIllegal [] _ = True
 validateIllegal (s : ss) q
   | s == '\"' = validateIllegal ss (q + 1)
   | odd q || (even q && legal s) = validateIllegal ss q
-  | otherwise = error "unknown literal"
+  | otherwise = error ("unknown literal '" ++ [s] ++ "'")
   where
     legal c = or [isSpace c, isAlphaNum c, isLeftCurly c, isRightCurly c, isLeftSquare c, isRightSquare c, isComma c, c == '-', c == ':']
 
-validateBrackets :: String -> Bool
-validateBrackets file
-  | not (validateCurly file "") = error "curly brackets mismatch"
-  | not (validateSquare file "") = error "square brackets mismatch"
-  | not (validateQuote file) = error "quotes mismatch"
+validateBrackets :: String -> String -> String -> Bool
+validateBrackets [] curlstk sqrstk
+  | not (null curlstk) = error "expected '}'"
+  | not (null sqrstk) = error "expected ']'"
   | otherwise = True
+validateBrackets (s : ss) curlstk sqrstk
+  | isLeftCurly s = validateBrackets ss (curlstk ++ [s]) sqrstk
+  | isRightCurly s && null curlstk = error "Unexpected token '}'"
+  | isRightCurly s && not (null curlstk) = validateBrackets ss (init curlstk) sqrstk
+  | isLeftSquare s = validateBrackets ss curlstk (sqrstk ++ [s])
+  | isRightSquare s && null sqrstk = error "Unexpected token ']'"
+  | isRightSquare s && not (null sqrstk) = validateBrackets ss curlstk (init sqrstk)
+  | otherwise = validateBrackets ss curlstk sqrstk
 
 validateQuote :: String -> Bool
-validateQuote = even . length . filter (== '\"')
-
-validateCurly :: String -> String -> Bool
-validateCurly [] stk = null stk
-validateCurly (s : ss) stk
-  | isLeftCurly s = validateCurly ss (stk ++ [s])
-  | isRightCurly s && not (null stk) = validateCurly ss (init stk)
-  | isRightCurly s && null stk = False
-  | otherwise = validateCurly ss stk
-
-validateSquare :: String -> String -> Bool
-validateSquare [] stk = null stk
-validateSquare (s : ss) stk
-  | isLeftSquare s = validateSquare ss (stk ++ [s])
-  | isRightSquare s && not (null stk) = validateSquare ss (init stk)
-  | isRightSquare s && null stk = False
-  | otherwise = validateSquare ss stk
+validateQuote file
+  | (odd . length . filter (== '\"')) file = error ("quotes mismatch-> " ++ file)
+  | otherwise = True
 
 pairs :: String -> Int -> Int -> String -> [String]
 pairs [] _ _ _ = []
@@ -81,5 +102,11 @@ isLeftSquare c = c == '['
 isRightSquare :: Char -> Bool
 isRightSquare c = c == ']'
 
+isQuote :: Char -> Bool
+isQuote c = c == '\"'
+
 isComma :: Char -> Bool
 isComma c = c == ','
+
+isColon :: Char -> Bool
+isColon c = c == ':'

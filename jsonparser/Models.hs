@@ -16,7 +16,9 @@ instance Show Constant where
   show NULL = "null"
 
 newtype Key = Key String
+  deriving (Show)
 
 newtype Pair = Pair (Key, Val)
+  deriving(Show)
 
 type JSON = [Pair]
