@@ -31,11 +31,11 @@ parseKey ss acc idx
 
 parseVal :: String -> String -> Int -> (Val, Int)
 parseVal ss acc idx
-  | isQuote (ss!!idx) = (Line (parseLine ss "" (idx+1)) , 0)
+  | isQuote (ss!!idx) = parseLine ss "" (idx+1)
 
-parseLine :: String -> String -> Int -> String
+parseLine :: String -> String -> Int -> (Val, Int)
 parseLine ss acc idx
-  | currentLetter == '\"' = acc
+  | currentLetter == '\"' = (Line acc, idx+1)
   | otherwise = parseLine ss (acc++[currentLetter]) (idx+1)
     where currentLetter = ss!!idx
 
@@ -70,13 +70,8 @@ validateQuote file
   | (odd . length . filter (== '\"')) file = error ("quotes mismatch-> " ++ file)
   | otherwise = True
 
-pairs :: String -> Int -> Int -> String -> [String]
-pairs [] _ _ _ = []
-pairs (s : ss) q a p
-  | s == '\"' = pairs ss (q + 1) a (s : p)
-  | even q && (s == '[' || s == ']') = pairs ss q (a + 1) (s : p)
-  | odd q && (s == '[' || s == ']') = pairs ss q a (s : p)
-  | s == ',' && (odd q || odd a) = pairs ss q a (s : p)
+pairs :: String -> String -> String -> Int -> [String]
+pairs (s:ss)
 
 trim :: String -> String
 trim file = [ch | ch <- spacesRemoved, ch /= '\n']
