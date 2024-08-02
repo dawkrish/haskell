@@ -2,7 +2,7 @@ module Models where
 
 data Val
   = Line String
-  | Number Int
+  | Number String
   | Constant
   | JSON
   | Array

@@ -23,8 +23,7 @@ parseObject :: String -> JSON -> Int -> (JSON, Int)
 parseObject ss js idx
   | isRightCurly (ss !! idx) = (js, idx)
   | isQuote (ss !! idx) = parseObject ss (js ++ [j]) i2
-  | isMinus (ss !! idx) = parseNum
-  -- | isComma (ss !!idx) = error (show idx)
+  -- \| isComma (ss !!idx) = error (show idx)
   | otherwise = error (show js ++ show idx)
   where
     (k, i1) = parseKey ss "" (idx + 1)
@@ -43,13 +42,34 @@ parseKey ss acc idx
 parseVal :: String -> String -> Int -> (Val, Int)
 parseVal ss acc idx
   | isQuote (ss !! idx) = parseLine ss "" (idx + 1)
+  | isDigit (ss !! idx) = parseNumber ss "" idx
 
 parseLine :: String -> String -> Int -> (Val, Int)
 parseLine ss acc idx
-  | currentLetter == '\"' = (Line acc, idx + 1)
+  | isQuote currentLetter = (Line acc, idx + 1)
   | otherwise = parseLine ss (acc ++ [currentLetter]) (idx + 1)
   where
     currentLetter = ss !! idx
+
+parseNumber :: String -> String -> Int -> (Val, Int)
+parseNumber ss acc idx
+  | idx >= length ss = error "index large :("
+  | isRightCurly currentLetter || isComma currentLetter && isDigit (last acc) = (Number acc, idx)
+  | (isRightCurly currentLetter || isComma currentLetter) && isExp (last acc) = error "Unterminated exponent"
+  | (isRightCurly currentLetter || isComma currentLetter) && isDot (last acc) = error "Unterminated float"
+ -- | isRightCurly currentLetter || isComma currentLetter && isMinus (last acc) = error "Unterminated negative number"
+  | isMinus currentLetter && null acc = nextCall
+  | isMinus currentLetter && isExp (last acc) = nextCall
+  | isMinus currentLetter = error "Invalid Number"
+  | isDigit currentLetter = nextCall
+  | isDot currentLetter && notElem '.' acc = nextCall
+  | isDot currentLetter && elem '.' acc = error "Invalid Number"
+  | isExp currentLetter && notElem 'e' acc = nextCall
+  | isExp currentLetter && elem 'e' acc = error "Invalid Number"
+  | otherwise = error ("Invalid literal " ++ [currentLetter])
+  where
+    currentLetter = ss !! idx
+    nextCall = parseNumber ss (acc ++ [currentLetter]) (idx + 1)
 
 valid :: String -> Bool
 valid file = validCurly file "" 0 && validSquare file "" 0 && validateQuote file && validateIllegal file 0
@@ -132,3 +152,6 @@ isMinus c = c == '-'
 
 isDot :: Char -> Bool
 isDot c = c == '.'
+
+isExp :: Char -> Bool
+isExp c = c == 'e'
