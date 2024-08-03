@@ -3,7 +3,7 @@ import Models
 
 t1 = "{\n\t\"name\" : \"krish agarwal\",\n\t\"arr\" : [10,20,30]\n}"
 
-t2 = "{\"name\" : \"dfd}s\",}"
+t2 = "{\"name\" : \"dfd}s\"}"
 
 t3 = "{\"perc\":-583.39e-1}"
 
@@ -30,11 +30,10 @@ parseObject ss js idx
   | isRightCurly (ss !! idx) = (js, idx)
   | isQuote (ss !! idx) = parseObject ss (js ++ [j]) i2
   | isComma (ss !! idx) && isRightCurly (ss !! (idx + 1)) = error "No comma(,) needed for one key-value pair"
-  | isComma (ss !! idx) = error (show ss ++ show (idx + 1))
-  -- \| isComma (ss !! idx) = parseObject ss (js ++ [j]) i2
+  | isComma (ss !! idx) = parseObject ss js (idx+1)
   | otherwise = error (show js ++ show idx)
   where
-    (k, i1) = parseKey ss "" (idx + 1)
+    (k, i1) = parseKey ss "" idx
     (v, i2) = parseVal ss "" i1
     j = Pair (k, v)
 
@@ -50,13 +49,24 @@ parseKey ss acc idx
 
 parseVal :: String -> String -> Int -> (Val, Int)
 parseVal ss acc idx
-  | isQuote (ss !! idx) = parseLine ss "" (idx + 1)
+  | isQuote (ss !! idx) = parseLine ss "" idx
   | isMinus (ss !! idx) = parseNumber ss "" idx
   | isDigit (ss !! idx) = parseNumber ss "" idx
+  -- | isAlpha (ss !! idx) = parseKeyword ss "" idx
 
+
+--parseKeyword :: String -> String -> Int -> (Val, Int)
+
+
+{-
+  Takes starting index to be '"' and keep accumulating till it finds another '"'
+  Returns (tail acc, newIdx)
+  where newIdx is idx after the last '"'
+-}
 parseLine :: String -> String -> Int -> (Val, Int)
 parseLine ss acc idx
-  | isQuote currentLetter = (Line acc, idx + 1)
+  | isQuote currentLetter && notElem '\"' acc = parseLine ss (acc ++ [currentLetter]) (idx+1)
+  | isQuote currentLetter = (Line (tail acc), idx+1)
   | otherwise = parseLine ss (acc ++ [currentLetter]) (idx + 1)
   where
     currentLetter = ss !! idx

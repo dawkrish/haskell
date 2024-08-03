@@ -3,7 +3,7 @@ module Models where
 data Val
   = Line String
   | Number String
-  | Constant
+  | Keyword String
   | JSON
   | Array
   deriving (Show)
