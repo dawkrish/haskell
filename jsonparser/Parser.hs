@@ -54,19 +54,26 @@ parseLine ss acc idx
 parseNumber :: String -> String -> Int -> (Val, Int)
 parseNumber ss acc idx
   | idx >= length ss = error "index large :("
-  | isRightCurly currentLetter || isComma currentLetter && isDigit (last acc) = (Number acc, idx)
-  | (isRightCurly currentLetter || isComma currentLetter) && isExp (last acc) = error "Unterminated exponent"
-  | (isRightCurly currentLetter || isComma currentLetter) && isDot (last acc) = error "Unterminated float"
- -- | isRightCurly currentLetter || isComma currentLetter && isMinus (last acc) = error "Unterminated negative number"
-  | isMinus currentLetter && null acc = nextCall
-  | isMinus currentLetter && isExp (last acc) = nextCall
-  | isMinus currentLetter = error "Invalid Number"
+  | (isRightCurly currentLetter || isComma currentLetter) && isDigit (last acc) = (Number acc, idx)
+  | (isRightCurly currentLetter || isComma currentLetter) && isExp (last acc) = error "Unterminated exponent(e)"
+  | (isRightCurly currentLetter || isComma currentLetter) && isDot (last acc) = error "Unterminated float(.)"
+  | (isRightCurly currentLetter || isComma currentLetter) && isMinus (last acc) = error "Unterminated negative(-) number"
+
+  | isMinus currentLetter && (null acc || isExp (last acc)) = nextCall
+  | isMinus currentLetter = error "Expected exponent(e) before negative(-)"
+
   | isDigit currentLetter = nextCall
-  | isDot currentLetter && notElem '.' acc = nextCall
-  | isDot currentLetter && elem '.' acc = error "Invalid Number"
-  | isExp currentLetter && notElem 'e' acc = nextCall
-  | isExp currentLetter && elem 'e' acc = error "Invalid Number"
+
+  | isDot currentLetter && notElem '.' acc && notElem 'e' acc = nextCall
+  | isDot currentLetter && elem '.' acc = error "can't have two floating points :("
+  | isDot currentLetter && elem 'e' acc = error "float(.) must come before exponent(e)"
+
+  | isExp currentLetter && notElem 'e' acc && isDigit (last acc) = nextCall
+  | isExp currentLetter && elem 'e' acc = error "can't have two exponents :("
+  | isExp currentLetter && not (isDigit (last acc)) = error "expected number before exponent(e)"
+
   | otherwise = error ("Invalid literal " ++ [currentLetter])
+
   where
     currentLetter = ss !! idx
     nextCall = parseNumber ss (acc ++ [currentLetter]) (idx + 1)
