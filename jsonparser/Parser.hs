@@ -1,11 +1,17 @@
 import Data.Char {- isSpace, isDigit, isAlphaNum -}
 import Models
 
-f = "{\n\t\"name\" : \"krish agarwal\",\n\t\"arr\" : [10,20,30]\n}"
+t1 = "{\n\t\"name\" : \"krish agarwal\",\n\t\"arr\" : [10,20,30]\n}"
 
-a = "{\"name\" : \"dfd}s\",}"
+t2 = "{\"name\" : \"dfd}s\",}"
 
-m = trim a
+t3 = "{\"perc\":-583.39e-1}"
+
+t4 = "{\"name\" : \"alice\", \"age\" : 192}"
+
+t = trim t4
+
+s = "\"abc\":"
 
 wrapper :: String -> JSON
 wrapper file
@@ -23,7 +29,9 @@ parseObject :: String -> JSON -> Int -> (JSON, Int)
 parseObject ss js idx
   | isRightCurly (ss !! idx) = (js, idx)
   | isQuote (ss !! idx) = parseObject ss (js ++ [j]) i2
-  -- \| isComma (ss !!idx) = error (show idx)
+  | isComma (ss !! idx) && isRightCurly (ss !! (idx + 1)) = error "No comma(,) needed for one key-value pair"
+  | isComma (ss !! idx) = error (show ss ++ show (idx + 1))
+  -- \| isComma (ss !! idx) = parseObject ss (js ++ [j]) i2
   | otherwise = error (show js ++ show idx)
   where
     (k, i1) = parseKey ss "" (idx + 1)
@@ -32,9 +40,10 @@ parseObject ss js idx
 
 parseKey :: String -> String -> Int -> (Key, Int)
 parseKey ss acc idx
-  | idx + 1 > length ss - 1 = error ("expected ':'" ++ show idx)
-  | currentLetter == '\"' && not (isColon (ss !! (idx + 1))) = error "expected ':'"
-  | currentLetter == '\"' = (Key acc, idx + 2)
+  | (idx + 1) > length ss - 1 = error ("Index must go out of sight:/\t" ++ show idx ++ "\t" ++ show (idx + 1))
+  | isQuote currentLetter && notElem '\"' acc = parseKey ss (acc ++[currentLetter]) (idx + 1)
+  | isQuote currentLetter && not (isColon (ss !! (idx + 1))) = error "key must terminate with colon(:)"
+  | isQuote currentLetter = (Key (tail acc), idx + 2)
   | otherwise = parseKey ss (acc ++ [currentLetter]) (idx + 1)
   where
     currentLetter = ss !! idx
@@ -42,6 +51,7 @@ parseKey ss acc idx
 parseVal :: String -> String -> Int -> (Val, Int)
 parseVal ss acc idx
   | isQuote (ss !! idx) = parseLine ss "" (idx + 1)
+  | isMinus (ss !! idx) = parseNumber ss "" idx
   | isDigit (ss !! idx) = parseNumber ss "" idx
 
 parseLine :: String -> String -> Int -> (Val, Int)
@@ -58,22 +68,16 @@ parseNumber ss acc idx
   | (isRightCurly currentLetter || isComma currentLetter) && isExp (last acc) = error "Unterminated exponent(e)"
   | (isRightCurly currentLetter || isComma currentLetter) && isDot (last acc) = error "Unterminated float(.)"
   | (isRightCurly currentLetter || isComma currentLetter) && isMinus (last acc) = error "Unterminated negative(-) number"
-
   | isMinus currentLetter && (null acc || isExp (last acc)) = nextCall
   | isMinus currentLetter = error "Expected exponent(e) before negative(-)"
-
   | isDigit currentLetter = nextCall
-
   | isDot currentLetter && notElem '.' acc && notElem 'e' acc = nextCall
   | isDot currentLetter && elem '.' acc = error "can't have two floating points :("
   | isDot currentLetter && elem 'e' acc = error "float(.) must come before exponent(e)"
-
   | isExp currentLetter && notElem 'e' acc && isDigit (last acc) = nextCall
   | isExp currentLetter && elem 'e' acc = error "can't have two exponents :("
   | isExp currentLetter && not (isDigit (last acc)) = error "expected number before exponent(e)"
-
   | otherwise = error ("Invalid literal " ++ [currentLetter])
-
   where
     currentLetter = ss !! idx
     nextCall = parseNumber ss (acc ++ [currentLetter]) (idx + 1)
@@ -112,7 +116,7 @@ validateIllegal (s : ss) q
   | odd q || (even q && legal s) = validateIllegal ss q
   | otherwise = error ("unknown literal '" ++ [s] ++ "'")
   where
-    legal c = or [isSpace c, isAlphaNum c, isLeftCurly c, isRightCurly c, isLeftSquare c, isRightSquare c, isComma c, c == '-', c == ':']
+    legal c = or [isSpace c, isAlphaNum c, isLeftCurly c, isRightCurly c, isLeftSquare c, isRightSquare c, isComma c, isMinus c, isDot c, isColon c]
 
 validateQuote :: String -> Bool
 validateQuote file
