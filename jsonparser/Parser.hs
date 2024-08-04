@@ -1,5 +1,11 @@
 import Data.Char {- isSpace, isDigit, isAlphaNum -}
 import Models
+import System.IO
+
+main :: IO ()
+main = do
+  file <- readFile "test.json"
+  print (wrapper file)
 
 t1 = "{\n\t\"name\" : \"krish agarwal\",\n\t\"arr\" : [10,20,30]\n}"
 
@@ -9,7 +15,9 @@ t3 = "{\"perc\":-583.39e-1}"
 
 t4 = "{\"name\" : \"alice\", \"age\" : 192}"
 
-t = trim t4
+t5 = "{\"name\" : \"alice\", \"age\" : 192, \"student\" : true}"
+
+t = trim t5
 
 s = "\"abc\":"
 
@@ -30,7 +38,7 @@ parseObject ss js idx
   | isRightCurly (ss !! idx) = (js, idx)
   | isQuote (ss !! idx) = parseObject ss (js ++ [j]) i2
   | isComma (ss !! idx) && isRightCurly (ss !! (idx + 1)) = error "No comma(,) needed for one key-value pair"
-  | isComma (ss !! idx) = parseObject ss js (idx+1)
+  | isComma (ss !! idx) = parseObject ss js (idx + 1)
   | otherwise = error (show js ++ show idx)
   where
     (k, i1) = parseKey ss "" idx
@@ -40,7 +48,7 @@ parseObject ss js idx
 parseKey :: String -> String -> Int -> (Key, Int)
 parseKey ss acc idx
   | (idx + 1) > length ss - 1 = error ("Index must go out of sight:/\t" ++ show idx ++ "\t" ++ show (idx + 1))
-  | isQuote currentLetter && notElem '\"' acc = parseKey ss (acc ++[currentLetter]) (idx + 1)
+  | isQuote currentLetter && notElem '\"' acc = parseKey ss (acc ++ [currentLetter]) (idx + 1)
   | isQuote currentLetter && not (isColon (ss !! (idx + 1))) = error "key must terminate with colon(:)"
   | isQuote currentLetter = (Key (tail acc), idx + 2)
   | otherwise = parseKey ss (acc ++ [currentLetter]) (idx + 1)
@@ -49,14 +57,24 @@ parseKey ss acc idx
 
 parseVal :: String -> String -> Int -> (Val, Int)
 parseVal ss acc idx
-  | isQuote (ss !! idx) = parseLine ss "" idx
-  | isMinus (ss !! idx) = parseNumber ss "" idx
-  | isDigit (ss !! idx) = parseNumber ss "" idx
-  -- | isAlpha (ss !! idx) = parseKeyword ss "" idx
+  | isQuote currentLetter = parseLine ss "" idx
+  | isMinus currentLetter = parseNumber ss "" idx
+  | isDigit currentLetter = parseNumber ss "" idx
+  | isAlpha currentLetter = parseKeyword ss "" idx
+  -- | isA
+  | otherwise = error "Expecting a value"
+  where
+    currentLetter = ss !! idx
 
-
---parseKeyword :: String -> String -> Int -> (Val, Int)
-
+parseKeyword :: String -> String -> Int -> (Val, Int)
+parseKeyword ss acc idx
+  | (isRightCurly currentLetter || isComma currentLetter) && isValid acc = (Keyword acc, idx)
+  | isRightCurly currentLetter || isComma currentLetter = error ("Unknown keyword " ++ acc)
+  | isAlpha currentLetter = parseKeyword ss (acc ++ [currentLetter]) (idx + 1)
+  | otherwise = error ("Unknown literal " ++ show currentLetter)
+  where
+    isValid s = s == "true" || s == "false" || s == "null"
+    currentLetter = ss !! idx
 
 {-
   Takes starting index to be '"' and keep accumulating till it finds another '"'
@@ -65,8 +83,8 @@ parseVal ss acc idx
 -}
 parseLine :: String -> String -> Int -> (Val, Int)
 parseLine ss acc idx
-  | isQuote currentLetter && notElem '\"' acc = parseLine ss (acc ++ [currentLetter]) (idx+1)
-  | isQuote currentLetter = (Line (tail acc), idx+1)
+  | isQuote currentLetter && notElem '\"' acc = parseLine ss (acc ++ [currentLetter]) (idx + 1)
+  | isQuote currentLetter = (Line (tail acc), idx + 1)
   | otherwise = parseLine ss (acc ++ [currentLetter]) (idx + 1)
   where
     currentLetter = ss !! idx
