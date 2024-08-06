@@ -61,9 +61,18 @@ parseVal ss acc idx
   | isMinus currentLetter = parseNumber ss "" idx
   | isDigit currentLetter = parseNumber ss "" idx
   | isAlpha currentLetter = parseKeyword ss "" idx
-  -- | isA
+  | isLeftSquare currentLetter = parseArray ss [] idx
   | otherwise = error "Expecting a value"
   where
+    currentLetter = ss !! idx
+
+parseArray :: String -> [Val] -> Int -> (Val, Int)
+parseArray ss acc idx
+  | isRightSquare currentLetter = (Array acc, idx + 1)
+  | isComma currentLetter = parseArray ss acc (idx+1)
+  | otherwise = parseArray ss (acc ++ [val]) i1
+  where
+    (val, i1) = parseVal ss "" idx 
     currentLetter = ss !! idx
 
 parseKeyword :: String -> String -> Int -> (Val, Int)

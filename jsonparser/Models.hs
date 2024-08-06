@@ -4,16 +4,9 @@ data Val
   = Line String
   | Number String
   | Keyword String
-  | JSON
-  | Array
+  | Array [Val]
+  | Obj Val
   deriving (Show)
-
-data Constant = TRUE | FALSE | NULL
-
-instance Show Constant where
-  show TRUE = "true"
-  show FALSE = "false"
-  show NULL = "null"
 
 newtype Key = Key String
   deriving (Show)
